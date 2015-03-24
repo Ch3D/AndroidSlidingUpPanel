@@ -37,17 +37,24 @@ import java.util.Arrays;
  * views within their parent ViewGroup.
  */
 public class ViewDragHelper {
-    private static final String TAG = "ViewDragHelper";
-
-    /**
+	/**
      * A null/invalid pointer ID.
      */
     public static final int INVALID_POINTER = -1;
+
+    // Last known position/pointer tracking
+    private int mActivePointerId = INVALID_POINTER;
 
     /**
      * A view is not currently being dragged or animating as a result of a fling/snap.
      */
     public static final int STATE_IDLE = 0;
+
+    private final Runnable mSetIdleRunnable = new Runnable() {
+        public void run() {
+            setDragState(STATE_IDLE);
+        }
+    };
 
     /**
      * A view is currently being dragged. The position is currently changing as a result
@@ -101,43 +108,7 @@ public class ViewDragHelper {
      */
     public static final int DIRECTION_ALL = DIRECTION_HORIZONTAL | DIRECTION_VERTICAL;
 
-    private static final int EDGE_SIZE = 20; // dp
-
-    private static final int BASE_SETTLE_DURATION = 256; // ms
-    private static final int MAX_SETTLE_DURATION = 600; // ms
-
-    // Current drag state; idle, dragging or settling
-    private int mDragState;
-
-    // Distance to travel before a drag may begin
-    private int mTouchSlop;
-
-    // Last known position/pointer tracking
-    private int mActivePointerId = INVALID_POINTER;
-    private float[] mInitialMotionX;
-    private float[] mInitialMotionY;
-    private float[] mLastMotionX;
-    private float[] mLastMotionY;
-    private int[] mInitialEdgesTouched;
-    private int[] mEdgeDragsInProgress;
-    private int[] mEdgeDragsLocked;
-    private int mPointersDown;
-
-    private VelocityTracker mVelocityTracker;
-    private float mMaxVelocity;
-    private float mMinVelocity;
-
-    private int mEdgeSize;
-    private int mTrackingEdges;
-
-    private ScrollerCompat mScroller;
-
-    private final Callback mCallback;
-
-    private View mCapturedView;
-    private boolean mReleaseInProgress;
-
-    private final ViewGroup mParentView;
+	public static final int TOUCH_SLOP = 1;
 
     /**
      * A Callback is used as a communication channel with the ViewDragHelper back to the
@@ -321,6 +292,14 @@ public class ViewDragHelper {
         }
     }
 
+    private static final String TAG = "ViewDragHelper";
+
+    private static final int EDGE_SIZE = 20; // dp
+
+    private static final int BASE_SETTLE_DURATION = 256; // ms
+
+    private static final int MAX_SETTLE_DURATION = 600; // ms
+
     /**
      * Interpolator defining the animation curve for mScroller
      */
@@ -328,12 +307,6 @@ public class ViewDragHelper {
         public float getInterpolation(float t) {
             t -= 1.0f;
             return t * t * t * t * t + 1.0f;
-        }
-    };
-
-    private final Runnable mSetIdleRunnable = new Runnable() {
-        public void run() {
-            setDragState(STATE_IDLE);
         }
     };
 
@@ -363,6 +336,48 @@ public class ViewDragHelper {
         return helper;
     }
 
+    private final Callback mCallback;
+
+    private final ViewGroup mParentView;
+
+	// Current drag state; idle, dragging or settling
+    private int mDragState;
+
+    // Distance to travel before a drag may begin
+    private int mTouchSlop;
+
+    private float[] mInitialMotionX;
+
+    private float[] mInitialMotionY;
+
+    private float[] mLastMotionX;
+
+    private float[] mLastMotionY;
+
+    private int[] mInitialEdgesTouched;
+
+    private int[] mEdgeDragsInProgress;
+
+    private int[] mEdgeDragsLocked;
+
+    private int mPointersDown;
+
+    private VelocityTracker mVelocityTracker;
+
+    private float mMaxVelocity;
+
+    private float mMinVelocity;
+
+    private int mEdgeSize;
+
+    private int mTrackingEdges;
+
+    private ScrollerCompat mScroller;
+
+    private View mCapturedView;
+
+    private boolean mReleaseInProgress;
+
     /**
      * Apps should use ViewDragHelper.create() to get a new instance.
      * This will allow VDH to use internal compatibility implementations for different
@@ -386,20 +401,11 @@ public class ViewDragHelper {
         final float density = context.getResources().getDisplayMetrics().density;
         mEdgeSize = (int) (EDGE_SIZE * density + 0.5f);
 
-        mTouchSlop = vc.getScaledTouchSlop();
+        //mTouchSlop = vc.getScaledTouchSlop();
+	    mTouchSlop = TOUCH_SLOP;
         mMaxVelocity = vc.getScaledMaximumFlingVelocity();
         mMinVelocity = vc.getScaledMinimumFlingVelocity();
         mScroller = ScrollerCompat.create(context, sInterpolator);
-    }
-
-    /**
-     * Set the minimum velocity that will be detected as having a magnitude greater than zero
-     * in pixels per second. Callback methods accepting a velocity will be clamped appropriately.
-     *
-     * @param minVel Minimum velocity to detect
-     */
-    public void setMinVelocity(float minVel) {
-        mMinVelocity = minVel;
     }
 
     /**
@@ -411,6 +417,16 @@ public class ViewDragHelper {
      */
     public float getMinVelocity() {
         return mMinVelocity;
+    }
+
+    /**
+     * Set the minimum velocity that will be detected as having a magnitude greater than zero
+     * in pixels per second. Callback methods accepting a velocity will be clamped appropriately.
+     *
+     * @param minVel Minimum velocity to detect
+     */
+    public void setMinVelocity(float minVel) {
+        mMinVelocity = minVel;
     }
 
     /**
