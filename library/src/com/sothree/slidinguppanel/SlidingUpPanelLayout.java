@@ -1050,6 +1050,21 @@ public class SlidingUpPanelLayout extends ViewGroup {
         return false;
     }
 
+    public boolean smoothSlideToInstant(float slideOffset) {
+        if (!isEnabled()) {
+            // Nothing to do.
+            return false;
+        }
+
+        int panelTop = computePanelTopPosition(slideOffset);
+        if (mDragHelper.smoothSlideViewToInstant(mSlideableView, mSlideableView.getLeft(), panelTop)) {
+            setAllChildrenVisible();
+            ViewCompat.postInvalidateOnAnimation(this);
+            return true;
+        }
+        return false;
+    }
+
     @Override
     public void computeScroll() {
         if (mDragHelper != null && mDragHelper.continueSettling(true)) {

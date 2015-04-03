@@ -559,6 +559,13 @@ public class ViewDragHelper {
         return forceSettleCapturedViewAt(finalLeft, finalTop, 0, 0);
     }
 
+    public boolean smoothSlideViewToInstant(View child, int finalLeft, int finalTop) {
+        mCapturedView = child;
+        mActivePointerId = INVALID_POINTER;
+
+        return forceSettleCapturedViewAtInstant(finalLeft, finalTop, 0, 0);
+    }
+
     /**
      * Settle the captured view at the given (left, top) position.
      * The appropriate velocity from prior motion will be taken into account.
@@ -604,6 +611,26 @@ public class ViewDragHelper {
         }
 
         final int duration = computeSettleDuration(mCapturedView, dx, dy, xvel, yvel);
+        mScroller.startScroll(startLeft, startTop, dx, dy, duration);
+
+        setDragState(STATE_SETTLING);
+        return true;
+    }
+
+    private boolean forceSettleCapturedViewAtInstant(int finalLeft, int finalTop, int xvel, int yvel) {
+        final int startLeft = mCapturedView.getLeft();
+        final int startTop = mCapturedView.getTop();
+        final int dx = finalLeft - startLeft;
+        final int dy = finalTop - startTop;
+
+        if (dx == 0 && dy == 0) {
+            // Nothing to do. Send callbacks, be done.
+            mScroller.abortAnimation();
+            setDragState(STATE_IDLE);
+            return false;
+        }
+
+        final int duration = 0;
         mScroller.startScroll(startLeft, startTop, dx, dy, duration);
 
         setDragState(STATE_SETTLING);
